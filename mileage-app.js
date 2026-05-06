@@ -1,6 +1,7 @@
 (function () {
   const STORAGE_KEY = "oa_mileage_portal_data";
   const SESSION_KEY = "oa_mileage_portal_session";
+  const TRACK_POINT_INTERVAL_MS = 60 * 1000;
   const page = document.body.dataset.page || "";
   const config = window.OA_MILEAGE_CONFIG || {};
 
@@ -13,9 +14,13 @@
     noticeTimer: null
   };
 
-  document.addEventListener("DOMContentLoaded", init);
+  document.addEventListener("DOMContentLoaded", () => {
+    init().catch((error) => {
+      console.error("No se pudo iniciar el portal de kilometraje", error);
+    });
+  });
 
-  function init() {
+  async function init() {
     if (page === "login") {
       initLoginPage();
       return;
@@ -28,7 +33,7 @@
       return;
     }
 
-    const user = findUserById(session.userId);
+    const user = findSessionUser(session);
 
     if (!user) {
       clearSession();
@@ -37,6 +42,13 @@
     }
 
     state.currentUser = user;
+    await hydrateRemoteData();
+
+    const remoteSessionUser = findUserByUsername(state.currentUser.username);
+    if (remoteSessionUser) {
+      state.currentUser = remoteSessionUser;
+      setSession(remoteSessionUser);
+    }
 
     if (page === "supervisor" && user.role !== "supervisor") {
       redirectByRole(user.role);
@@ -117,29 +129,47 @@
       users: [
         {
           id: "sup-1",
-          username: "supervisor.oa",
-          password: "Supervisor2026!",
+          username: "ClaraS",
+          password: "Cla260A",
           role: "supervisor",
-          fullName: "Patricia Caceres",
+          fullName: "Clara Samaniego",
           phone: "0983123123",
           active: true
         },
         {
           id: "drv-1",
-          username: "chofer.raul",
-          password: "Chofer2026!",
+          username: "DerlisE",
+          password: "Der210A",
           role: "chofer",
-          fullName: "Raul Benitez",
+          fullName: "Derlis Espinola",
           phone: "0984111222",
           active: true
         },
         {
           id: "drv-2",
-          username: "chofer.miguel",
-          password: "Chofer2026!",
+          username: "HugoG",
+          password: "HG250A",
           role: "chofer",
-          fullName: "Miguel Fernandez",
+          fullName: "Hugo Galeano",
           phone: "0984333444",
+          active: true
+        },
+        {
+          id: "drv-3",
+          username: "FernandoI",
+          password: "FIn240A",
+          role: "chofer",
+          fullName: "Fernando Insaurralde",
+          phone: "0984555666",
+          active: true
+        },
+        {
+          id: "sup-2",
+          username: "AlbertB",
+          password: "Ab26oA",
+          role: "supervisor",
+          fullName: "Alberto Barrios",
+          phone: "0983777888",
           active: true
         }
       ],
@@ -289,7 +319,8 @@
     localStorage.setItem(
       SESSION_KEY,
       JSON.stringify({
-        userId,
+        userId: userId.id || userId,
+        user: typeof userId === "object" ? buildSessionUser(userId) : null,
         loginAt: new Date().toISOString()
       })
     );
@@ -301,6 +332,32 @@
 
   function findUserById(userId) {
     return state.data.users.find((user) => user.id === userId) || null;
+  }
+
+  function findUserByUsername(username) {
+    return state.data.users.find((user) => normalizeValue(user.username) === normalizeValue(username)) || null;
+  }
+
+  function findSessionUser(session) {
+    if (!session) {
+      return null;
+    }
+
+    if (session.user && session.user.username) {
+      return session.user;
+    }
+
+    return findUserById(session.userId);
+  }
+
+  function buildSessionUser(user) {
+    return {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      fullName: user.fullName,
+      phone: user.phone || ""
+    };
   }
 
   function findBranchById(branchId) {
@@ -424,6 +481,10 @@
     return configValue(config.appsScriptUrl);
   }
 
+  function hasRemoteBackend() {
+    return Boolean(getAppsScriptUrl());
+  }
+
   function getRouteViewerBaseUrl() {
     return configValue(config.routeViewerBaseUrl);
   }
@@ -503,8 +564,105 @@
 
     trip.routeViewUrl = getTripRouteViewerUrl(trip);
 
+    await syncTripToRemote(tripId, true);
+  }
+
+  async function callRemoteBackend(payload) {
     const appsScriptUrl = getAppsScriptUrl();
     if (!appsScriptUrl) {
+      throw new Error("No hay Apps Script configurado.");
+    }
+
+    const response = await fetch(appsScriptUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    return data;
+  }
+
+  async function hydrateRemoteData() {
+    if (!hasRemoteBackend()) {
+      return;
+    }
+
+    try {
+      const appsScriptUrl = new URL(getAppsScriptUrl());
+      appsScriptUrl.searchParams.set("action", "dataset");
+      const response = await fetch(appsScriptUrl.toString(), { method: "GET" });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+
+      state.data.users = (payload.users || []).map((user) => ({
+        id: user.id,
+        username: user.username,
+        password: "",
+        role: user.role,
+        fullName: user.fullName,
+        phone: user.phone || "",
+        active: user.active !== false
+      }));
+
+      if (Array.isArray(payload.trips)) {
+        state.data.trips = payload.trips.map((trip) => ({
+          id: trip.id,
+          code: trip.code,
+          numberLabel: trip.numberLabel,
+          type: trip.type,
+          destination: trip.destination,
+          notes: trip.notes || "",
+          originBranchId: trip.originBranchId,
+          expectedDeparture: trip.expectedDeparture || "",
+          driverId: trip.driverId,
+          assignedBy: trip.assignedBy || "",
+          status: trip.status,
+          createdAt: trip.createdAt || "",
+          updatedAt: trip.updatedAt || "",
+          startedAt: trip.startedAt || "",
+          finishedAt: trip.finishedAt || "",
+          totalKm: Number(trip.totalKm || 0),
+          lastPingAt: trip.lastPingAt || "",
+          currentLat: typeof trip.currentLat === "number" ? trip.currentLat : null,
+          currentLng: typeof trip.currentLng === "number" ? trip.currentLng : null,
+          routePoints: Array.isArray(trip.routePoints) ? trip.routePoints : [],
+          routeViewUrl: getTripRouteViewerUrl(trip),
+          syncStatus: "synced",
+          syncError: "",
+          syncedAt: trip.syncedAt || ""
+        }));
+      }
+
+      if (Array.isArray(payload.activityLogs)) {
+        state.data.activityLogs = payload.activityLogs;
+      }
+
+      saveData();
+    } catch (error) {
+      console.warn("No se pudo hidratar el portal desde Google Sheets", error);
+    }
+  }
+
+  async function syncTripToRemote(tripId, completedSync) {
+    const trip = findTripById(tripId);
+    if (!trip) {
+      return;
+    }
+
+    trip.routeViewUrl = getTripRouteViewerUrl(trip);
+
+    if (!hasRemoteBackend()) {
       trip.syncStatus = "local_only";
       trip.syncError = "";
       saveData();
@@ -518,21 +676,9 @@
     refreshCurrentPage();
 
     try {
-      const response = await fetch(appsScriptUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify(buildTripSyncPayload(trip))
-      });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok || payload.ok === false) {
-        throw new Error(payload.error || `HTTP ${response.status}`);
-      }
-
+      const payload = await callRemoteBackend(buildTripSyncPayload(trip));
       trip.routeViewUrl = payload.routeViewUrl || getTripRouteViewerUrl(trip);
-      trip.syncStatus = "synced";
+      trip.syncStatus = completedSync ? "synced_completed" : "synced";
       trip.syncError = "";
       trip.syncedAt = new Date().toISOString();
     } catch (error) {
@@ -542,6 +688,21 @@
 
     saveData();
     refreshCurrentPage();
+  }
+
+  async function syncLogToRemote(entry) {
+    if (!hasRemoteBackend() || !entry) {
+      return;
+    }
+
+    try {
+      await callRemoteBackend({
+        action: "appendLog",
+        entry: entry
+      });
+    } catch (error) {
+      console.warn("No se pudo registrar la bitacora remota", error);
+    }
   }
 
   function refreshCurrentPage() {
@@ -584,13 +745,25 @@
 
   function logActivity(type, tripId, detail) {
     state.data.sequence.log += 1;
-    state.data.activityLogs.unshift({
+    const entry = {
       id: `log-${state.data.sequence.log}`,
       type,
       userId: state.currentUser ? state.currentUser.id : null,
       tripId,
       createdAt: new Date().toISOString(),
       detail
+    };
+    state.data.activityLogs.unshift(entry);
+    const trip = tripId ? findTripById(tripId) : null;
+    syncLogToRemote({
+      id: entry.id,
+      userId: entry.userId,
+      username: state.currentUser ? state.currentUser.username : "",
+      fullName: state.currentUser ? state.currentUser.fullName : "",
+      action: type,
+      tripId: trip ? trip.code : entry.tripId,
+      createdAt: entry.createdAt,
+      detail: entry.detail
     });
   }
 
@@ -685,24 +858,40 @@
       });
     });
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const username = normalizeValue(usernameInput.value);
       const password = passwordInput.value;
-      const user = state.data.users.find(
-        (item) =>
-          normalizeValue(item.username) === username &&
-          item.password === password &&
-          item.active
-      );
+      let user = null;
+
+      if (hasRemoteBackend()) {
+        try {
+          const payload = await callRemoteBackend({
+            action: "login",
+            username: usernameInput.value.trim(),
+            password
+          });
+          user = payload.user || null;
+        } catch (error) {
+          setInlineMessage(message, error instanceof Error ? error.message : "No se pudo validar el usuario.", "error");
+          return;
+        }
+      } else {
+        user = state.data.users.find(
+          (item) =>
+            normalizeValue(item.username) === username &&
+            item.password === password &&
+            item.active
+        ) || null;
+      }
 
       if (!user) {
         setInlineMessage(message, "Usuario o contrasena incorrectos.", "error");
         return;
       }
 
-      setSession(user.id);
+      setSession(user);
       setInlineMessage(message, "Acceso correcto. Redirigiendo...", "success");
       redirectByRole(user.role);
     });
@@ -859,11 +1048,12 @@
           trip.status = "edited";
         }
 
-      logActivity("edit_trip", trip.id, `Actualizo ${trip.code}`);
-      saveData();
-      setInlineMessage(message, "Viaje actualizado correctamente.", "success");
-      showNotice("Viaje actualizado", `Se ajustaron los datos del viaje ${trip.code}.`);
-    } else {
+        logActivity("edit_trip", trip.id, `Actualizo ${trip.code}`);
+        saveData();
+        syncTripToRemote(trip.id, false);
+        setInlineMessage(message, "Viaje actualizado correctamente.", "success");
+        showNotice("Viaje actualizado", `Se ajustaron los datos del viaje ${trip.code}.`);
+      } else {
       state.data.sequence.trip += 1;
       const tripNumber = state.data.sequence.trip;
       const dayStamp = now.slice(0, 10).replace(/-/g, "");
@@ -894,12 +1084,13 @@
           syncedAt: ""
         };
 
-      state.data.trips.unshift(trip);
-      logActivity("assign_trip", trip.id, `Asigno ${trip.code} a ${driverName(driverId)}`);
-      saveData();
-      setInlineMessage(message, "Viaje asignado correctamente.", "success");
-      showNotice("Viaje asignado", `El viaje ${trip.code} ya aparece en la lista del chofer.`);
-    }
+        state.data.trips.unshift(trip);
+        logActivity("assign_trip", trip.id, `Asigno ${trip.code} a ${driverName(driverId)}`);
+        saveData();
+        syncTripToRemote(trip.id, false);
+        setInlineMessage(message, "Viaje asignado correctamente.", "success");
+        showNotice("Viaje asignado", `El viaje ${trip.code} ya aparece en la lista del chofer.`);
+      }
 
     resetAssignForm();
     renderSupervisorOverview();
@@ -1093,10 +1284,10 @@
     }
 
     if (mode === "active" || mode === "history") {
-      card.append(buildRouteSection(trip));
+      card.append(buildRouteSummarySection(trip));
     }
 
-    if (mode === "active" || mode === "history") {
+    if (mode === "history" && trip.status === "completed") {
       const routeButton = createRouteViewerLink(trip, "Ver ruta");
       actions.append(routeButton);
     }
@@ -1125,9 +1316,14 @@
     return card;
   }
 
-  function buildRouteSection(trip) {
+  function buildRouteSummarySection(trip) {
     const section = createElement("div", "trip-card__route");
-    section.append(createRoutePreview(trip.routePoints));
+    const heading = createElement("div", "trip-card__route-heading");
+    heading.append(
+      createElement("strong", "", "Resumen de ruta"),
+      createElement("p", "", "Abre el visor para revisar el recorrido exacto sobre Google Maps.")
+    );
+    section.append(heading);
 
     const stats = createElement("div", "route-stats");
     stats.append(
@@ -1146,42 +1342,6 @@
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     return link;
-  }
-
-  function createRoutePreview(points) {
-    if (!points || points.length < 2) {
-      return createElement("div", "route-preview__empty", "La ruta se va dibujando cuando el chofer comparte ubicacion.");
-    }
-
-    const wrapper = createElement("div", "route-preview");
-    const latitudes = points.map((point) => point.lat);
-    const longitudes = points.map((point) => point.lng);
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-    const width = 420;
-    const height = 160;
-    const padding = 18;
-    const latRange = Math.max(maxLat - minLat, 0.0001);
-    const lngRange = Math.max(maxLng - minLng, 0.0001);
-
-    const polyline = points
-      .map((point) => {
-        const x = padding + ((point.lng - minLng) / lngRange) * (width - padding * 2);
-        const y = height - padding - ((point.lat - minLat) / latRange) * (height - padding * 2);
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-    wrapper.innerHTML = `
-      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
-        <polyline points="${polyline}" fill="none" stroke="#d91f26" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        <circle cx="${polyline.split(" ")[0].split(",")[0]}" cy="${polyline.split(" ")[0].split(",")[1]}" r="6" fill="#2056a6"></circle>
-        <circle cx="${polyline.split(" ").slice(-1)[0].split(",")[0]}" cy="${polyline.split(" ").slice(-1)[0].split(",")[1]}" r="7" fill="#177f5d"></circle>
-      </svg>
-    `;
-    return wrapper;
   }
 
   function createRouteStat(label, value) {
@@ -1269,12 +1429,11 @@
           finishButton.addEventListener("click", () => finishDriverTrip(trip.id));
 
           actions.append(pingButton, finishButton);
-          actions.append(createRouteViewerLink(trip, "Ver ruta"));
-          card.append(buildRouteSection(trip));
+          card.append(buildRouteSummarySection(trip));
         }
 
         if (trip.status === "completed") {
-          card.append(buildRouteSection(trip));
+          card.append(buildRouteSummarySection(trip));
           actions.append(createRouteViewerLink(trip, "Ver ruta"));
 
           if (trip.routePoints.length > 1) {
@@ -1311,12 +1470,13 @@
     trip.updatedAt = now;
     trip.lastPingAt = now;
     trip.routePoints = trip.routePoints || [];
-    saveData();
-    logActivity("start_trip", trip.id, `Inicio ${trip.code}`);
-    showNotice("Viaje iniciado", `El viaje ${trip.code} comenzo a registrar la ruta.`);
-    beginDriverTracking(trip.id);
-    renderDriverTrips();
-  }
+      saveData();
+      logActivity("start_trip", trip.id, `Inicio ${trip.code}`);
+      showNotice("Viaje iniciado", `El viaje ${trip.code} comenzo a registrar la ruta.`);
+      beginDriverTracking(trip.id);
+      requestSinglePosition(trip.id, false, true);
+      renderDriverTrips();
+    }
 
   function finishDriverTrip(tripId) {
     const trip = findTripById(tripId);
@@ -1329,8 +1489,8 @@
       return;
     }
 
-    requestSinglePosition(tripId, true);
-  }
+      requestSinglePosition(tripId, true, true);
+    }
 
   function beginDriverTracking(tripId) {
     stopDriverTracking(false);
@@ -1341,10 +1501,10 @@
       return;
     }
 
-    state.driverWatchId = navigator.geolocation.watchPosition(
-      (position) => {
-        persistPosition(tripId, position, false);
-      },
+      state.driverWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+          persistPosition(tripId, position, false, false);
+        },
       () => {
         showNotice("No se pudo leer ubicacion", "El viaje sigue activo, pero necesitamos permiso de ubicacion para registrar kilometraje.");
       },
@@ -1383,7 +1543,7 @@
     }
   }
 
-  function requestSinglePosition(tripId, finishAfter) {
+  function requestSinglePosition(tripId, finishAfter, forceSave) {
     if (!("geolocation" in navigator)) {
       if (finishAfter) {
         finalizeTripWithoutNewPoint(tripId);
@@ -1393,7 +1553,7 @@
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        persistPosition(tripId, position, Boolean(finishAfter));
+          persistPosition(tripId, position, Boolean(finishAfter), Boolean(forceSave));
       },
       () => {
         if (finishAfter) {
@@ -1410,36 +1570,47 @@
     );
   }
 
-  function persistPosition(tripId, position, finishAfter) {
-    const trip = findTripById(tripId);
-    if (!trip) {
-      return;
-    }
+  function persistPosition(tripId, position, finishAfter, forceSave) {
+      const trip = findTripById(tripId);
+      if (!trip) {
+        return;
+      }
 
     const coords = position.coords;
     const timestamp = new Date(position.timestamp || Date.now()).toISOString();
-    const point = {
-      lat: Number(coords.latitude.toFixed(6)),
-      lng: Number(coords.longitude.toFixed(6)),
-      accuracy: Math.round(coords.accuracy || 0),
-      speedKmh: coords.speed ? Number((coords.speed * 3.6).toFixed(1)) : 0,
-      timestamp
-    };
+      const point = {
+        lat: Number(coords.latitude.toFixed(6)),
+        lng: Number(coords.longitude.toFixed(6)),
+        accuracy: Math.round(coords.accuracy || 0),
+        speedKmh: coords.speed ? Number((coords.speed * 3.6).toFixed(1)) : 0,
+        timestamp
+      };
 
-    const previous = trip.routePoints[trip.routePoints.length - 1];
-    if (previous) {
-      trip.totalKm = Number((trip.totalKm + haversineKm(previous, point)).toFixed(2));
-    }
+      const previous = trip.routePoints[trip.routePoints.length - 1];
+      trip.currentLat = point.lat;
+      trip.currentLng = point.lng;
+      trip.lastPingAt = timestamp;
+      trip.updatedAt = timestamp;
 
-    trip.routePoints.push(point);
-    trip.currentLat = point.lat;
-    trip.currentLng = point.lng;
-    trip.lastPingAt = timestamp;
-    trip.updatedAt = timestamp;
-    saveData();
+      const shouldStorePoint =
+        !previous ||
+        Boolean(forceSave) ||
+        Boolean(finishAfter) ||
+        new Date(timestamp).getTime() - new Date(previous.timestamp || 0).getTime() >= TRACK_POINT_INTERVAL_MS;
 
-    if (finishAfter) {
-      finalizeTripWithoutNewPoint(tripId);
+      if (shouldStorePoint) {
+        if (previous) {
+          trip.totalKm = Number((trip.totalKm + haversineKm(previous, point)).toFixed(2));
+        }
+
+        trip.routePoints.push(point);
+      }
+
+      saveData();
+      syncTripToRemote(trip.id, false);
+
+      if (finishAfter) {
+        finalizeTripWithoutNewPoint(tripId);
       return;
     }
 

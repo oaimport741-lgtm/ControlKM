@@ -2,7 +2,16 @@
 
 Cuando conectemos este portal a una hoja de calculo, conviene separar la informacion en pestañas simples:
 
-## Hoja 1: `Viajes`
+## Hoja 1: `USUARIOS`
+
+Columnas sugeridas:
+
+- `Nombre`
+- `Usuario`
+- `Contrasena`
+- `Tipo Usuario`
+
+## Hoja 2: `Viajes`
 
 Columnas sugeridas:
 
@@ -26,7 +35,7 @@ Columnas sugeridas:
 - `cantidad_puntos`
 - `url_ruta`
 
-## Hoja 2: `Puntos_Ruta`
+## Hoja 3: `Puntos_Ruta`
 
 Columnas sugeridas:
 
@@ -38,16 +47,6 @@ Columnas sugeridas:
 - `velocidad_kmh`
 - `secuencia`
 - `kilometros_acumulados`
-
-## Hoja 3: `Usuarios`
-
-Columnas sugeridas:
-
-- `usuario`
-- `nombre_completo`
-- `rol`
-- `telefono`
-- `activo`
 
 ## Hoja 4: `Bitacora`
 

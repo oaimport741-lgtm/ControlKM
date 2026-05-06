@@ -32,6 +32,8 @@ Este proyecto es una version demo/local del portal de control de kilometraje par
 - Permite descargar una ruta en formato `GeoJSON`
 - Genera un enlace `Ver ruta` por cada viaje con trazado disponible
 - Puede quedar listo para sincronizar viajes terminados a Google Sheets mediante Apps Script
+- Puede validar usuarios desde la hoja `USUARIOS` en Google Sheets
+- Sincroniza avances de viaje y puntos GPS hacia Google Sheets cuando `appsScriptUrl` esta configurado
 - Genera una exportacion demo en `CSV` para simular la futura hoja de calculo
 
 ## Lo que queda para enlazar despues
@@ -52,3 +54,12 @@ En `mileage-config.js` vas a completar despues:
 - `appsScriptUrl`: URL de la Web App de Google Apps Script
 - `routeViewerBaseUrl`: URL publica de `route.html`
 - `googleMapsApiKey`: API key para dibujar la ruta en Google Maps
+
+## Hoja de usuarios
+
+El login remoto puede tomar usuarios desde la hoja `USUARIOS` con estas columnas:
+
+- `Nombre`
+- `Usuario`
+- `Contrasena`
+- `Tipo Usuario`
