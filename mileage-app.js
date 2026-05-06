@@ -441,7 +441,7 @@
   }
 
   function getTripRouteViewerUrl(trip) {
-    return trip.routeViewUrl || buildRouteViewerUrl(trip.code);
+    return buildRouteViewerUrl(trip.code);
   }
 
   function normalizeRoutePoints(routePoints, tripCode) {
