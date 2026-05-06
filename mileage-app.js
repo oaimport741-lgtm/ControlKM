@@ -116,22 +116,8 @@
         { id: "br-3", name: "Deposito CDE", city: "Ciudad del Este" },
         { id: "br-4", name: "Planta Limpio", city: "Limpio" }
       ],
-      origins: [
-        "Casa Central Asuncion",
-        "Sucursal San Lorenzo",
-        "Deposito CDE",
-        "Planta Limpio"
-      ],
-      destinations: [
-        "Ciudad del Este",
-        "Encarnacion",
-        "Pedro Juan Caballero",
-        "Deposito Limpio",
-        "Sucursal San Lorenzo",
-        "Mariano Roque Alonso",
-        "Concepcion",
-        "Coronel Oviedo"
-      ],
+      origins: [],
+      destinations: [],
       users: [
         {
           id: "sup-1",
@@ -655,11 +641,11 @@
           state.data.activityLogs = payload.activityLogs;
         }
 
-        if (Array.isArray(payload.origins) && payload.origins.length) {
+        if (Array.isArray(payload.origins)) {
           state.data.origins = payload.origins;
         }
 
-        if (Array.isArray(payload.destinations) && payload.destinations.length) {
+        if (Array.isArray(payload.destinations)) {
           state.data.destinations = payload.destinations;
         }
 
@@ -985,9 +971,9 @@
     }
 
     select.innerHTML = '<option value="">Selecciona origen</option>';
-    const origins = Array.isArray(state.data.origins) && state.data.origins.length
+    const origins = Array.isArray(state.data.origins)
       ? state.data.origins
-      : state.data.branches.map((branch) => branch.name);
+      : [];
 
     origins.forEach((origin) => {
       const option = document.createElement("option");
