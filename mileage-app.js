@@ -116,6 +116,12 @@
         { id: "br-3", name: "Deposito CDE", city: "Ciudad del Este" },
         { id: "br-4", name: "Planta Limpio", city: "Limpio" }
       ],
+      origins: [
+        "Casa Central Asuncion",
+        "Sucursal San Lorenzo",
+        "Deposito CDE",
+        "Planta Limpio"
+      ],
       destinations: [
         "Ciudad del Este",
         "Encarnacion",
@@ -520,6 +526,7 @@
   function buildTripSyncPayload(trip) {
     const driver = findUserById(trip.driverId);
     const branch = findBranchById(trip.originBranchId);
+    const supervisor = findUserById(trip.assignedBy);
 
     return {
       action: "saveTrip",
@@ -538,7 +545,7 @@
         driverId: trip.driverId,
         driverName: driver ? driver.fullName : "",
         driverUsername: driver ? driver.username : "",
-        assignedBy: trip.assignedBy || "",
+        assignedBy: supervisor ? supervisor.username : (trip.assignedBy || ""),
         status: trip.status,
         statusLabel: statusMeta(trip.status).label,
         startedAt: trip.startedAt || "",
@@ -644,11 +651,19 @@
         }));
       }
 
-      if (Array.isArray(payload.activityLogs)) {
-        state.data.activityLogs = payload.activityLogs;
-      }
+        if (Array.isArray(payload.activityLogs)) {
+          state.data.activityLogs = payload.activityLogs;
+        }
 
-      saveData();
+        if (Array.isArray(payload.origins) && payload.origins.length) {
+          state.data.origins = payload.origins;
+        }
+
+        if (Array.isArray(payload.destinations) && payload.destinations.length) {
+          state.data.destinations = payload.destinations;
+        }
+
+        saveData();
     } catch (error) {
       console.warn("No se pudo hidratar el portal desde Google Sheets", error);
     }
@@ -735,7 +750,7 @@
 
   function branchName(branchId) {
     const branch = findBranchById(branchId);
-    return branch ? branch.name : "-";
+    return branch ? branch.name : (branchId || "-");
   }
 
   function driverName(driverId) {
@@ -851,13 +866,6 @@
     const passwordInput = document.getElementById("loginPassword");
     const message = document.getElementById("loginMessage");
 
-    document.querySelectorAll(".demo-chip").forEach((button) => {
-      button.addEventListener("click", () => {
-        usernameInput.value = button.dataset.demoUser || "";
-        passwordInput.value = button.dataset.demoPass || "";
-      });
-    });
-
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
@@ -908,11 +916,11 @@
     document.getElementById("historyTripSearch").addEventListener("input", renderHistoryTrips);
     document.getElementById("exportTripsCsv").addEventListener("click", exportTripsCsv);
 
-    bindSupervisorDashboardActions();
-    populateDriverSelect();
-    populateBranchSelect();
-    populateDestinationDatalist();
-    resetAssignForm();
+      bindSupervisorDashboardActions();
+      populateDriverSelect();
+      populateBranchSelect();
+      populateDestinationSelect();
+      resetAssignForm();
     renderSupervisorOverview();
     renderPendingTrips();
     renderActiveTrips();
@@ -977,25 +985,30 @@
     }
 
     select.innerHTML = '<option value="">Selecciona origen</option>';
-    state.data.branches.forEach((branch) => {
+    const origins = Array.isArray(state.data.origins) && state.data.origins.length
+      ? state.data.origins
+      : state.data.branches.map((branch) => branch.name);
+
+    origins.forEach((origin) => {
       const option = document.createElement("option");
-      option.value = branch.id;
-      option.textContent = `${branch.name} - ${branch.city}`;
+      option.value = origin;
+      option.textContent = origin;
       select.appendChild(option);
     });
   }
 
-  function populateDestinationDatalist() {
-    const datalist = document.getElementById("destinationList");
-    if (!datalist) {
+  function populateDestinationSelect() {
+    const select = document.getElementById("tripDestination");
+    if (!select) {
       return;
     }
 
-    datalist.innerHTML = "";
+    select.innerHTML = '<option value="">Selecciona destino</option>';
     state.data.destinations.forEach((destination) => {
       const option = document.createElement("option");
       option.value = destination;
-      datalist.appendChild(option);
+      option.textContent = destination;
+      select.appendChild(option);
     });
   }
 

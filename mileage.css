@@ -122,6 +122,23 @@ button{
   font-weight:700;
 }
 
+.field-helper{
+  color:var(--brand-muted);
+  font-size:0.82rem;
+  line-height:1.4;
+}
+
+.field--catalog select{
+  background:
+    linear-gradient(180deg,#ffffff 0%,#fcf7f4 100%);
+  border-color:rgba(217,31,38,0.12);
+  font-weight:600;
+}
+
+.field--catalog select:focus{
+  border-color:rgba(217,31,38,0.42);
+}
+
 .field input,
 .field textarea,
 .field select{

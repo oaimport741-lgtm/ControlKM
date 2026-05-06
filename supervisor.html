@@ -136,14 +136,16 @@
           </div>
 
           <div class="form-grid form-grid--two">
-            <label class="field">
+            <label class="field field--catalog">
               <span>Origen</span>
               <select id="tripOrigin" required></select>
+              <small class="field-helper">Lista tomada de la hoja ORIGENES.</small>
             </label>
 
-            <label class="field">
+            <label class="field field--catalog">
               <span>Destino</span>
-              <input type="text" id="tripDestination" list="destinationList" placeholder="Ciudad del Este, Encarnacion, deposito..." required>
+              <select id="tripDestination" required></select>
+              <small class="field-helper">Lista tomada de la hoja DESTINOS.</small>
             </label>
           </div>
 
@@ -211,8 +213,6 @@
     </section>
   </div>
 </div>
-
-<datalist id="destinationList"></datalist>
 
 <div id="globalNotice" class="app-notice" hidden>
   <div class="app-notice__body">
