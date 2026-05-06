@@ -236,7 +236,8 @@
 
     try {
       await ensureGoogleMaps();
-      drawGoogleMap(points, mapStage);
+      const snappedPoints = await getRenderableRoutePoints(points);
+      drawGoogleMap(snappedPoints, mapStage);
     } catch (error) {
       mapStage.hidden = true;
       fallbackStage.hidden = false;
@@ -251,6 +252,120 @@
         fallbackStage.appendChild(preview);
       }
     }
+  }
+
+  async function getRenderableRoutePoints(points) {
+    const cleanedPoints = cleanRoutePoints(points);
+
+    if (cleanedPoints.length < 2) {
+      return cleanedPoints;
+    }
+
+    const apiKey = getGoogleMapsApiKey();
+    if (!apiKey) {
+      return cleanedPoints;
+    }
+
+    try {
+      const snappedPoints = await snapPathToRoads(cleanedPoints, apiKey);
+      return snappedPoints.length ? snappedPoints : cleanedPoints;
+    } catch (error) {
+      console.warn("No se pudo ajustar la ruta a las calles de Google Maps", error);
+      return cleanedPoints;
+    }
+  }
+
+  function cleanRoutePoints(points) {
+    const cleaned = [];
+
+    (points || []).forEach((point, index) => {
+      const lat = Number(point.lat);
+      const lng = Number(point.lng);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      const previous = cleaned[cleaned.length - 1];
+      if (previous && Math.abs(previous.lat - lat) < 0.000001 && Math.abs(previous.lng - lng) < 0.000001) {
+        return;
+      }
+
+      cleaned.push({
+        sequence: Number(point.sequence || index + 1),
+        lat,
+        lng,
+        timestamp: point.timestamp || "",
+        accuracy: Number(point.accuracy || 0),
+        speedKmh: Number(point.speedKmh || 0)
+      });
+    });
+
+    return cleaned;
+  }
+
+  async function snapPathToRoads(points, apiKey) {
+    const chunks = buildRoadChunks(points, 100);
+    const snappedPath = [];
+
+    for (const chunk of chunks) {
+      const snappedChunk = await requestSnappedChunk(chunk, apiKey);
+
+      snappedChunk.forEach((point) => {
+        const previous = snappedPath[snappedPath.length - 1];
+        if (previous && Math.abs(previous.lat - point.lat) < 0.000001 && Math.abs(previous.lng - point.lng) < 0.000001) {
+          return;
+        }
+
+        snappedPath.push(point);
+      });
+    }
+
+    return snappedPath;
+  }
+
+  function buildRoadChunks(points, maxPointsPerRequest) {
+    if (points.length <= maxPointsPerRequest) {
+      return [points];
+    }
+
+    const chunks = [];
+    const step = Math.max(maxPointsPerRequest - 1, 1);
+
+    for (let start = 0; start < points.length; start += step) {
+      const end = Math.min(start + maxPointsPerRequest, points.length);
+      const chunk = points.slice(start, end);
+      if (chunk.length >= 2) {
+        chunks.push(chunk);
+      }
+    }
+
+    return chunks;
+  }
+
+  async function requestSnappedChunk(points, apiKey) {
+    const url = new URL("https://roads.googleapis.com/v1/snapToRoads");
+    url.searchParams.set("path", points.map((point) => `${point.lat},${point.lng}`).join("|"));
+    url.searchParams.set("interpolate", "true");
+    url.searchParams.set("key", apiKey);
+
+    const response = await fetch(url.toString(), { method: "GET" });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok || !Array.isArray(payload.snappedPoints)) {
+      const detail = payload && payload.error && payload.error.message
+        ? payload.error.message
+        : `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
+
+    return payload.snappedPoints
+      .map((point, index) => ({
+        sequence: index + 1,
+        lat: Number(point.location && point.location.latitude),
+        lng: Number(point.location && point.location.longitude)
+      }))
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
   }
 
   function ensureGoogleMaps() {
