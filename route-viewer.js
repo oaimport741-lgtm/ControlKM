@@ -136,7 +136,6 @@
 
     renderSummaryGrid(trip);
     renderRouteActions(trip);
-    renderPointList(trip.routePoints);
     renderMap(trip.routePoints);
   }
 
@@ -154,7 +153,6 @@
       ["Fin real", formatDateTime(trip.finishedAt)],
       ["Kilometraje real", formatKm(trip.totalKm)],
       ["Ultimo ping", formatDateTime(trip.lastPingAt)],
-      ["Puntos guardados", String(trip.routePoints.length)],
       ["Tipo de viaje", humanTripType(trip.type)],
       ["Observaciones", trip.notes || "Sin observaciones"]
     ];
