@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OA Import - Chofer</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mileage.css">
+</head>
+<body class="mileage-page" data-page="chofer">
+<div class="app-shell app-shell--driver">
+  <aside class="app-sidebar">
+    <div class="app-sidebar__brand">
+      <img src="logo.png" alt="Logo OA Import" class="app-logo">
+      <div>
+        <p class="eyebrow">Portal logistico</p>
+        <h1>Chofer</h1>
+      </div>
+    </div>
+
+    <button type="button" class="mobile-menu-toggle" id="mobileMenuToggleDriver" aria-expanded="false" aria-controls="driverNav">
+      Menu de opciones
+    </button>
+
+    <nav id="driverNav" class="app-nav" aria-label="Menu chofer">
+      <button type="button" class="nav-link is-active" data-target="driverTrips">Rutas asignadas</button>
+    </nav>
+
+    <div class="app-sidebar__footer">
+      <p id="driverSidebarName" class="user-name">Chofer</p>
+      <button type="button" id="logoutDriver" class="button button-secondary button-block">Cerrar sesion</button>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="app-topbar">
+      <div>
+        <p class="eyebrow">Operacion movil</p>
+        <h2>Tus viajes asignados</h2>
+      </div>
+      <div class="user-pill">
+        <span class="status-dot"></span>
+        <span id="driverTopbarName">Chofer</span>
+      </div>
+    </header>
+
+    <section id="driverTrips" class="view-section is-active">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Lista operativa</p>
+          <h3>Solo tus rutas</h3>
+        </div>
+      </div>
+
+      <div id="driverTripList" class="card-list card-list--single"></div>
+    </section>
+  </div>
+</div>
+
+<div id="globalNotice" class="app-notice" hidden>
+  <div class="app-notice__body">
+    <strong id="globalNoticeTitle">Actualizacion</strong>
+    <p id="globalNoticeText">La operacion se realizo correctamente.</p>
+  </div>
+  <button id="globalNoticeClose" type="button" class="app-notice__close" aria-label="Cerrar aviso">x</button>
+</div>
+
+<script src="mileage-config.js"></script>
+<script src="mileage-app.js"></script>
+</body>
+</html>

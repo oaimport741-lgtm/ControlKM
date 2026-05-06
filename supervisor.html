@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OA Import - Supervisor de rutas</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mileage.css">
+</head>
+<body class="mileage-page" data-page="supervisor">
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div class="app-sidebar__brand">
+      <img src="logo.png" alt="Logo OA Import" class="app-logo">
+      <div>
+        <p class="eyebrow">Portal logistico</p>
+        <h1>Supervisor</h1>
+      </div>
+    </div>
+
+    <button type="button" class="mobile-menu-toggle" id="mobileMenuToggleSupervisor" aria-expanded="false" aria-controls="supervisorNav">
+      Menu de opciones
+    </button>
+
+    <nav id="supervisorNav" class="app-nav" aria-label="Menu supervisor">
+      <button type="button" class="nav-link is-active" data-target="supOverview">Dashboard</button>
+      <button type="button" class="nav-link" data-target="supAssign">Asignar viaje</button>
+      <button type="button" class="nav-link" data-target="supPending">Viajes pendientes</button>
+      <button type="button" class="nav-link" data-target="supActive">Choferes en ruta</button>
+      <button type="button" class="nav-link" data-target="supHistory">Historial de viajes</button>
+    </nav>
+
+    <div class="app-sidebar__footer">
+      <p id="supervisorSidebarName" class="user-name">Supervisor</p>
+      <button type="button" id="logoutSupervisor" class="button button-secondary button-block">Cerrar sesion</button>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="app-topbar">
+      <div>
+        <p class="eyebrow">Control de flota</p>
+        <h2>Despacho y seguimiento</h2>
+      </div>
+      <div class="user-pill">
+        <span class="status-dot"></span>
+        <span id="supervisorTopbarName">Supervisor</span>
+      </div>
+    </header>
+
+    <section id="supOverview" class="view-section is-active">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Vista general</p>
+          <h3>Operacion del dia</h3>
+        </div>
+      </div>
+
+      <div class="stats-grid stats-grid--four">
+        <button type="button" id="cardDriversOnRoute" class="stat-card stat-card--action">
+          <span class="stat-label">Choferes en ruta</span>
+          <strong id="statDriversOnRoute">0</strong>
+          <p>Unidades activas ahora mismo.</p>
+        </button>
+        <button type="button" id="cardPendingTrips" class="stat-card stat-card--action">
+          <span class="stat-label">Viajes pendientes</span>
+          <strong id="statPendingTrips">0</strong>
+          <p>Asignados y aun no iniciados.</p>
+        </button>
+        <button type="button" id="cardCompletedToday" class="stat-card stat-card--action">
+          <span class="stat-label">Finalizados hoy</span>
+          <strong id="statCompletedToday">0</strong>
+          <p>Viajes cerrados en el dia.</p>
+        </button>
+        <button type="button" id="cardKmWeek" class="stat-card stat-card--action">
+          <span class="stat-label">Km semana</span>
+          <strong id="statKmWeek">0 km</strong>
+          <p>Kilometraje acumulado de la semana.</p>
+        </button>
+      </div>
+
+      <div class="two-column-grid">
+        <article id="overviewLiveRoutesCard" class="panel-card panel-card--action">
+          <div class="panel-card__header">
+            <div>
+              <p class="eyebrow">Seguimiento</p>
+              <h4>Choferes en ruta actualmente</h4>
+            </div>
+          </div>
+          <div id="overviewLiveRoutes" class="stack-list"></div>
+        </article>
+
+        <article id="overviewPendingRequestsCard" class="panel-card panel-card--action">
+          <div class="panel-card__header">
+            <div>
+              <p class="eyebrow">Pendientes</p>
+              <h4>Proximos viajes a salir</h4>
+            </div>
+          </div>
+          <div id="overviewPendingTrips" class="stack-list"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="supAssign" class="view-section">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Planificacion</p>
+          <h3>Asignar viaje</h3>
+        </div>
+        <div id="assignModeBadge" class="status-badge status-badge--warm">Nuevo</div>
+      </div>
+
+      <article class="panel-card">
+        <form id="assignTripForm" class="form-stack">
+          <input type="hidden" id="assignTripId">
+
+          <div class="form-grid form-grid--two">
+            <label class="field">
+              <span>Tipo de viaje</span>
+              <select id="tripType" required>
+                <option value="">Selecciona</option>
+                <option value="reparto">Reparto</option>
+                <option value="transferencia">Transferencia</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Chofer asignado</span>
+              <select id="tripDriver" required></select>
+            </label>
+          </div>
+
+          <div class="form-grid form-grid--two">
+            <label class="field">
+              <span>Origen</span>
+              <select id="tripOrigin" required></select>
+            </label>
+
+            <label class="field">
+              <span>Destino</span>
+              <input type="text" id="tripDestination" list="destinationList" placeholder="Ciudad del Este, Encarnacion, deposito..." required>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Salida esperada</span>
+            <input type="datetime-local" id="tripDeparture" required>
+          </label>
+
+          <label class="field">
+            <span>Observaciones</span>
+            <textarea id="tripNotes" rows="4" placeholder="Indicaciones especiales, mercaderia, horario, peajes, etc."></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="button button-primary">Guardar viaje</button>
+            <button type="button" id="cancelTripEdit" class="button button-secondary" hidden>Cancelar edicion</button>
+          </div>
+          <p id="assignTripMessage" class="inline-message" aria-live="polite"></p>
+        </form>
+      </article>
+    </section>
+
+    <section id="supPending" class="view-section">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Despacho</p>
+          <h3>Viajes pendientes</h3>
+        </div>
+      </div>
+
+      <article class="panel-card">
+        <div class="filter-bar">
+          <input type="search" id="pendingTripSearch" placeholder="Buscar por viaje, destino o chofer">
+        </div>
+        <div id="pendingTripList" class="card-list"></div>
+      </article>
+    </section>
+
+    <section id="supActive" class="view-section">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Monitoreo</p>
+          <h3>Choferes en ruta</h3>
+        </div>
+      </div>
+
+      <div id="activeTripList" class="card-list card-list--single"></div>
+    </section>
+
+    <section id="supHistory" class="view-section">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Historico</p>
+          <h3>Viajes finalizados</h3>
+        </div>
+      </div>
+
+      <article class="panel-card">
+        <div class="filter-bar filter-bar--dual">
+          <input type="search" id="historyTripSearch" placeholder="Buscar por viaje, destino o chofer">
+          <button type="button" id="exportTripsCsv" class="button button-secondary">Exportar datos demo</button>
+        </div>
+        <div id="historyTripList" class="card-list card-list--single"></div>
+      </article>
+    </section>
+  </div>
+</div>
+
+<datalist id="destinationList"></datalist>
+
+<div id="globalNotice" class="app-notice" hidden>
+  <div class="app-notice__body">
+    <strong id="globalNoticeTitle">Actualizacion</strong>
+    <p id="globalNoticeText">La operacion se realizo correctamente.</p>
+  </div>
+  <button id="globalNoticeClose" type="button" class="app-notice__close" aria-label="Cerrar aviso">x</button>
+</div>
+
+<script src="mileage-config.js"></script>
+<script src="mileage-app.js"></script>
+</body>
+</html>

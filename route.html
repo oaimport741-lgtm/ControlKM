@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OA Import - Visualizador de ruta</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mileage.css">
+</head>
+<body class="mileage-page" data-page="route-viewer">
+<main class="route-view-shell">
+  <header class="panel-card route-view-hero">
+    <div class="route-view-brand">
+      <img src="logo.png" alt="Logo OA Import">
+      <div>
+        <p class="eyebrow">Historial de recorrido</p>
+        <h1 id="routeViewTitle">Ruta del viaje</h1>
+        <p id="routeViewSubtitle">Visualizacion de puntos, kilometraje y trazado registrado durante el viaje.</p>
+      </div>
+    </div>
+
+    <div class="route-view-actions">
+      <a href="supervisor.html" class="button button-secondary">Volver al portal</a>
+      <a id="routeViewExternalMap" href="#" target="_blank" rel="noopener noreferrer" class="button button-primary" hidden>Abrir punto actual</a>
+    </div>
+  </header>
+
+  <section id="routeLoading" class="panel-card empty-state">
+    <div>
+      <p class="eyebrow">Cargando</p>
+      <h2>Buscando la ruta solicitada</h2>
+      <p>Estamos reuniendo el detalle del viaje para mostrar el recorrido.</p>
+    </div>
+  </section>
+
+  <section id="routeError" class="panel-card empty-state" hidden>
+    <div>
+      <p class="eyebrow">No disponible</p>
+      <h2>No encontramos esa ruta</h2>
+      <p id="routeErrorText">El viaje solicitado no existe o todavia no tiene puntos guardados.</p>
+    </div>
+  </section>
+
+  <section id="routeContent" class="route-view-layout" hidden>
+    <article class="panel-card route-summary-card">
+      <div class="route-summary-header">
+        <div>
+          <p class="eyebrow">Resumen operativo</p>
+          <h2 id="routeSummaryCode">VIA-00000000-000</h2>
+        </div>
+        <span id="routeSummaryStatus" class="status-badge">Pendiente</span>
+      </div>
+
+      <div id="routeSummaryGrid" class="route-summary-grid"></div>
+    </article>
+
+    <article class="panel-card route-map-card">
+      <div>
+        <p class="eyebrow">Trazado guardado</p>
+        <h3>Ruta realizada</h3>
+      </div>
+      <div id="routeMapStage" class="route-map-stage route-map-stage--embed"></div>
+      <div id="routeMapFallback" class="route-map-fallback" hidden></div>
+    </article>
+
+    <article class="panel-card route-points-card">
+      <div>
+        <p class="eyebrow">Bitacora de puntos</p>
+        <h3>Puntos de ubicacion</h3>
+      </div>
+      <div id="routePointList" class="route-point-list"></div>
+    </article>
+  </section>
+</main>
+
+<script src="mileage-config.js"></script>
+<script src="route-viewer.js"></script>
+</body>
+</html>
